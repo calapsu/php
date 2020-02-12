@@ -12,8 +12,19 @@ class IndexController extends BaseController {
             $project1
         ];
 
+        //limites de meses en el proyecto si es menor al dado se elimina utilisamos use para icluir la duncion
+        //closures
+        //$limiMonths = 15;
+        //$filterFunction = function (array $job)  use ($limiMonths) {
+        //    return $job['months'] >= $limiMonths;
+        //};
+        //
+        //$jobs = array_filter($jobs->toArray(), $filterFunction);
+
+        
+
         $name = 'Hector Benitez';
-        $limitMonths = 2000;
+    
 
         return $this->renderHTML('index.twig', [
             'name' => $name,

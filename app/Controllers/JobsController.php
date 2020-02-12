@@ -3,8 +3,24 @@ namespace App\Controllers;
 
 use App\Models\Job;
 use Respect\Validation\Validator as v;
+use Zend\Diactoros\Response\RedirectResponse;
 
 class JobsController extends BaseController {
+//Litas todos lo jobs desde el panela adminitrativo
+  public function indexAction () {
+    $jobs = Job::withTrashed()->get();
+    return $this->renderHTML('jobs/index.twig', compact('jobs'));
+ }
+
+ public function deleteAction ( $request) {
+    $params = $request->getQueryParams();
+    $job = Job::find($params['id']);
+    $job->delete();
+
+
+    return new RedirectResponse('/php/jobs');
+ }
+
     public function getAddJobAction($request) {
         $responseMessage = null;
 
@@ -20,13 +36,18 @@ class JobsController extends BaseController {
                 $files = $request->getUploadedFiles();
                 $logo = $files['logo'];
 
+                //guardamos la imagen logo
+                $filePath = "";
                 if($logo->getError() == UPLOAD_ERR_OK) {
                     $fileName = $logo->getClientFilename();
-                    $logo->moveTo("uploads/$fileName");
+                    $filePath = "uploads/$fileName";
+                    $logo->moveTo($filePath);
                 }
+                //guardamos title y description en la base de datos
                 $job = new Job();
                 $job->title = $postData['title'];
                 $job->description = $postData['description'];
+                $job->image = $filePath;
                 $job->save();
 
                 $responseMessage = 'Saved';

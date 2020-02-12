@@ -51,11 +51,25 @@ $map->get('index', '/php/' , [
     'controller' => 'App\Controllers\IndexController',
     'action' => 'indexAction'
 ]);
+
+$map->get('indexJobs', '/php/jobs' , [
+    'controller' => 'App\Controllers\JobsController',
+    'action' => 'indexAction',
+    
+]);
+
 $map->get('addJobs', '/php/jobs/add' , [
     'controller' => 'App\Controllers\JobsController',
     'action' => 'getAddJobAction',
     'auth' => true
 ]);
+
+$map->get('deleteJobs', '/php/jobs/delete' , [
+    'controller' => 'App\Controllers\JobsController',
+    'action' => 'deleteAction',
+    
+]);
+
 $map->post('saveJobs', '/php/jobs/add' , [
     'controller' => 'App\Controllers\JobsController',
     'action' => 'getAddJobAction'
