@@ -4,9 +4,17 @@ namespace App\Controllers;
 use App\Models\Job;
 use Respect\Validation\Validator as v;
 use Zend\Diactoros\Response\RedirectResponse;
+use App\Services\JobService;
 
 class JobsController extends BaseController {
 //Litas todos lo jobs desde el panela adminitrativo
+  private $jobService;
+
+    public function __construct( Jobservice $jobService) {
+        parent::__construct();
+        $this->jobService = $jobService;
+    }
+
   public function indexAction () {
     $jobs = Job::withTrashed()->get();
     return $this->renderHTML('jobs/index.twig', compact('jobs'));
@@ -14,11 +22,12 @@ class JobsController extends BaseController {
 
  public function deleteAction ( $request) {
     $params = $request->getQueryParams();
-    $job = Job::find($params['id']);
-    $job->delete();
-
+    $this->jobService->deleteJob($params['id']);
 
     return new RedirectResponse('/php/jobs');
+
+
+    
  }
 
     public function getAddJobAction($request) {
