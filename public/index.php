@@ -1,9 +1,4 @@
 <?php
-
-ini_set('display_errors', 1);  //inicia las variables de php errores
-ini_set('display_starup_error',1);
-error_reporting(E_ALL); //constante php reporte de todos los errores
-
 require_once '../vendor/autoload.php';
 
 //para inicialisar las secciones 
@@ -13,8 +8,16 @@ session_start();
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->load();
 
+if (getenv('DEBUG') === 'true') {
+    ini_set('display_errors', 1);  //inicia las variables de php errores
+    ini_set('display_starup_error',1);
+    error_reporting(E_ALL); //constante php reporte de todos los errores
+}
 
 
+
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Aura\Router\RouterContainer;
@@ -28,6 +31,8 @@ use WoohooLabs\Harmony\Middleware\FastRouteMiddleware;
 use WoohooLabs\Harmony\Middleware\LaminasEmitterMiddleware;
 use WoohooLabs\Harmony\Middleware\HttpHandlerRunnerMiddleware;
 
+$log = new Logger('app');
+$log->pushHandler(new StreamHandler(__DIR__. '/../logs/app.log', Logger::WARNING));
 
 $container = new DI\Container();
 $capsule = new Capsule;
@@ -123,14 +128,32 @@ $route = $matcher->match($request);
 $matcher = $routerContainer->getMatcher();
 $route = $matcher->match($request);
 
+if (!$route ) {
+    echo 'No route';
+} else {
+    try{
+        $harmony = new Harmony($request, new Response());
+        $harmony
+        ->addMiddleware(new HttpHandlerRunnerMiddleware(new SapiEmitter()));
+    if (getenv('DEBUG') === 'true') {
+        $harmony->addMiddleware(new \Franzl\Middleware\Whoops\WhoopsMiddleware());
+    }
+    $harmony->addMiddleware(new \App\Middlewares\AuthenticationMiddleware())
+        ->addMiddleware(new Middlewares\AuraRouter($routerContainer))
+        ->addMiddleware(new DispatcherMiddleware($container, 'request-handler'))
+        ->run();
 
-    $harmony = new Harmony($request, new Response());
-    $harmony
-    ->addMiddleware(new HttpHandlerRunnerMiddleware(new SapiEmitter()))
-    ->addMiddleware(new \App\Middlewares\AuthenticationMiddleware())
-    ->addMiddleware(new Middlewares\AuraRouter($routerContainer))
-    ->addMiddleware(new DispatcherMiddleware($container, 'request-handler'))
-    ->run();
+        //cuando algo no funciona en la pagina manejar error
+
+    } catch (Exception $e) {
+        $log->warning($e->getMessage());
+        $emitter = new SapiEmitter();
+        $emitter->emit(new Response\EmptyResponse(400));
+    } catch (Error $e) {
+        $emitter = new SapiEmitter();
+        $emitter->emit(new Response\EmptyResponse(500));
+    }
 
 
+}
 
