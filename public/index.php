@@ -19,6 +19,16 @@ $dotenv->load();
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Aura\Router\RouterContainer;
 
+use Laminas\Diactoros\Response;
+use Laminas\Diactoros\ServerRequestFactory;
+use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
+use WoohooLabs\Harmony\Harmony;
+use WoohooLabs\Harmony\Middleware\DispatcherMiddleware;
+use WoohooLabs\Harmony\Middleware\FastRouteMiddleware;
+use WoohooLabs\Harmony\Middleware\LaminasEmitterMiddleware;
+use WoohooLabs\Harmony\Middleware\HttpHandlerRunnerMiddleware;
+
+
 $container = new DI\Container();
 $capsule = new Capsule;
 
@@ -48,109 +58,79 @@ $request = Laminas\Diactoros\ServerRequestFactory::fromGlobals(
 $routerContainer = new RouterContainer();
 $map = $routerContainer->getMap();
 $map->get('index', '/php/' , [
-    'controller' => 'App\Controllers\IndexController',
-    'action' => 'indexAction'
+    'App\Controllers\IndexController',
+    'indexAction'
 ]);
 
 $map->get('indexJobs', '/php/jobs' , [
-    'controller' => 'App\Controllers\JobsController',
-    'action' => 'indexAction',
+     'App\Controllers\JobsController',
+    'indexAction',
     
 ]);
 
 $map->get('addJobs', '/php/jobs/add' , [
     'controller' => 'App\Controllers\JobsController',
-    'action' => 'getAddJobAction',
+     'getAddJobAction',
     'auth' => true
 ]);
 
 $map->get('deleteJobs', '/php/jobs/delete' , [
-    'controller' => 'App\Controllers\JobsController',
-    'action' => 'deleteAction',
+     'App\Controllers\JobsController',
+     'deleteAction',
     
 ]);
 
 $map->post('saveJobs', '/php/jobs/add' , [
-    'controller' => 'App\Controllers\JobsController',
-    'action' => 'getAddJobAction'
+     'App\Controllers\JobsController',
+     'getAddJobAction'
 ]);
 
 $map->get('addUser', '/php/users/add', [
-    'controller' => 'App\Controllers\UsersController',
-    'action' => 'getAddUser'
+     'App\Controllers\UsersController',
+     'getAddUser'
 ]);
 
 $map->post('saveUser', '/php/users/save', [
-    'controller' => 'App\Controllers\UsersController',
-    'action' => 'postSaveUser'
+     'App\Controllers\UsersController',
+    'postSaveUser'
 ]);
 
 $map->get('loginForm', '/php/login', [
-    'controller' => 'App\Controllers\AuthController',
-    'action' => 'getLogin'
+    'App\Controllers\AuthController',
+    'getLogin'
 ]);
 
 $map->get('logout', '/php/logout', [
-    'controller' => 'App\Controllers\AuthController',
-    'action' => 'getLogout'
+     'App\Controllers\AuthController',
+     'getLogout'
 ]);
 
 $map->post('auth', '/php/auth', [
-    'controller' => 'App\Controllers\AuthController',
-    'action' => 'postLogin'
+     'App\Controllers\AuthController',
+    'postLogin'
 ]);
 
 $map->get('admin', '/php/admin', [
-    'controller' => 'App\Controllers\AdminController',
-    'action' => 'getIndex',
+     'App\Controllers\AdminController',
+     'getIndex',
     'auth' => true
 ]);
 
 $matcher = $routerContainer->getMatcher();
 $route = $matcher->match($request);
 
-  
+
+$matcher = $routerContainer->getMatcher();
+$route = $matcher->match($request);
 
 
+    $harmony = new Harmony($request, new Response());
+    $harmony
+    ->addMiddleware(new HttpHandlerRunnerMiddleware(new SapiEmitter()))
+    ->addMiddleware(new \App\Middlewares\AuthenticationMiddleware())
+    ->addMiddleware(new Middlewares\AuraRouter($routerContainer))
+    ->addMiddleware(new DispatcherMiddleware($container, 'request-handler'))
+    ->run();
 
-if(!$route) {
-    echo 'No route';
-}else {
-   $handlerData = $route->handler;
-   $controllerName = $handlerData['controller'];
-   $actionName = $handlerData['action'];
-   $needsAuth = $handlerData['auth'] ?? false;
-
-   $sessionUserId = $_SESSION['userId'] ?? null;
-
-   if ($needsAuth && !$sessionUserId) {
-       echo 'Protected route';
-       //terminar escripts es die
-       die;
-   }
-
-   //if ($controllerName === 'App\Controllers\JobsController') {
-   //    $controller = new $controllerName(new \App\Services\JobService());
-   //} else {
-   //    $controller = new $controllerName;
-   //}
-
-    $controller = $container->get($controllerName);
-
-   $response = $controller->$actionName($request);
-
-
-   //foreach vamos a recorrer una arreglo y cada elemento lo vamos a responde 
-
-   foreach($response->getHeaders() as $name => $values)
-   {
-       foreach($values as $value) {
-           header(sprintf('%s: %s', $name, $value), false);
-       }
-   }
-   //http-response_code : nos permite identifacr en tipo de coidgo que se va a enviar  repuesta
-   http_response_code($response->getStatusCode());
-   echo $response->getBody();
-}
 
 
